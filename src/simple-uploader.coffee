@@ -91,10 +91,11 @@ class SimpleUploader extends SimpleModule
     obj: fileObj
 
   _xhrUpload: (file) ->
-    formData = new FormData()
-    formData.append(file.fileKey, file.obj)
-    formData.append("original_filename", file.name)
-    formData.append(k, v) for k, v of file.params if file.params
+    formData = file.formDataBuilder?(file) || ->
+      new FormData()
+      formData.append(file.fileKey, file.obj)
+      formData.append("original_filename", file.name)
+      formData.append(k, v) for k, v of file.params if file.params
 
     file.xhr = $.ajax
       url: file.url
