@@ -80,6 +80,40 @@ class Uploader extends SimpleModule
     obj: fileObj
 
   _xhrUpload: (file) ->
+    # `opt.customXhr = function(file, ajaxSettings)` to override _xhrUpload
+    if 'function' == typeof file.customXhr
+      customXhr = file.customXhr
+      delete file.customXhr
+
+    else if 'function' == typeof @opts.customXhr
+      customXhr = @opts.customXhr
+
+    if customXhr
+      customXhr file,
+        processData: false
+        contentType: false
+        type: 'POST'
+        headers:
+          'X-File-Name': encodeURIComponent(file.name)
+        xhr: ->
+          req = $.ajaxSettings.xhr()
+          if req
+            req.upload.onprogress = (e) =>
+              @progress(e)
+          req
+        progress: (e) =>
+          return unless e.lengthComputable
+          @trigger 'uploadprogress', [file, e.loaded, e.total]
+        error: (xhr, status, err) =>
+          @trigger 'uploaderror', [file, xhr, status]
+        success: (result) =>
+          @trigger 'uploadprogress', [file, file.size, file.size]
+          @trigger 'uploadsuccess', [file, result]
+          $(document).trigger 'uploadsuccess', [file, result, @]
+        complete: (xhr, status) =>
+          @trigger 'uploadcomplete', [file, xhr.responseText]
+      return
+
     formData = new FormData()
     formData.append(file.fileKey, file.obj)
     formData.append("original_filename", file.name)
@@ -157,4 +191,5 @@ class Uploader extends SimpleModule
 uploader = (opts) ->
   new Uploader(opts)
 
-
+# FIXME: maybe better approach?
+uploader.class = Uploader
